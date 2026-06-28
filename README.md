@@ -13,7 +13,7 @@
 录入当前日期的资产快照。每个账户显示上次余额作为默认值，直接回车沿用，输入 `q` 取消不保存。
 
 ```
-python3 assets.py record
+uv run assets.py record
 ```
 
 ### list
@@ -21,10 +21,10 @@ python3 assets.py record
 查看资产总表，默认只显示最近余额不为 0 的活跃账户。
 
 ```
-python3 assets.py list
-python3 assets.py list --full       # 显示所有账户
-python3 assets.py list --by-type    # 按类型汇总
-python3 assets.py list --by-group   # 按分组汇总
+uv run assets.py list
+uv run assets.py list --full       # 显示所有账户
+uv run assets.py list --by-type    # 按类型汇总
+uv run assets.py list --by-group   # 按分组汇总
 ```
 
 ### add-account
@@ -32,7 +32,7 @@ python3 assets.py list --by-group   # 按分组汇总
 添加新账户（如新购入的基金）。
 
 ```
-python3 assets.py add-account
+uv run assets.py add-account
 ```
 
 ## 数据结构
