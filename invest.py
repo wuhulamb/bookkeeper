@@ -6,6 +6,11 @@ import urllib.request
 from datetime import date, datetime
 from pathlib import Path
 
+try:
+    import readline
+except ImportError:
+    pass
+
 from rich.console import Console
 from rich.table import Table
 

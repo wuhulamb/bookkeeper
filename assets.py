@@ -4,6 +4,11 @@ import sys
 from datetime import date
 from pathlib import Path
 
+try:
+    import readline
+except ImportError:
+    pass
+
 from rich.console import Console
 from rich.table import Table
 
