@@ -33,9 +33,9 @@ uv run assets.py record
 
 ```
 uv run assets.py list
-uv run assets.py list --full       # 显示所有账户
-uv run assets.py list --by-type    # 按类型汇总
-uv run assets.py list --by-group   # 按分组汇总
+uv run assets.py list --full       # 显示所有账户（含余额为 0 的）
+uv run assets.py list --by-type    # 按资产类别汇总（银行/支付/货币基金/基金）
+uv run assets.py list --by-org     # 按机构/平台汇总（每个银行/平台各一列）
 ```
 
 ### add-account
@@ -50,14 +50,16 @@ uv run assets.py add-account
 
 ### 账户
 
-每个账户有 `id`、`name`、`type`、`group` 四个字段：
+每个账户有 `id`、`name`、`type`、`org` 字段：
 
 | 字段 | 说明 | 示例 |
 |---|---|---|
 | id | 唯一标识，英文 | `alifund_018610` |
 | name | 显示名称 | `支付宝基金-018610` |
-| type | 类型 | `bank`, `fund`, `money_market`, `payment` |
-| group | 归属分组 | `alipay`, `wechat`, `icbc`, `abc` |
+| type | 资产类别 | `bank`, `fund`, `money_market`, `payment` |
+| org | 机构/平台（中文，新机构直接新增） | `工商银行`, `芜湖扬子银行`, `支付宝`, `微信` |
+
+`org` 表示钱存放在哪家机构，多个账户可同属一个机构（如余额宝、支付宝基金都归 `支付宝`）。
 
 ### 快照
 
@@ -66,7 +68,7 @@ uv run assets.py add-account
 ```json
 {
   "accounts": [
-    { "id": "abc", "name": "农业银行", "type": "bank", "group": "abc" }
+    { "id": "abc", "name": "农业银行", "type": "bank", "org": "农业银行" }
   ],
   "snapshots": [
     {

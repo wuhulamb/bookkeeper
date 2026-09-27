@@ -16,16 +16,25 @@ from rich.table import Table
 DATA_FILE = Path(__file__).parent / "assets.json"
 
 
+TYPE_LABELS = {
+    "bank": "银行",
+    "payment": "支付",
+    "money_market": "货币基金",
+    "fund": "基金",
+}
+
+# org = 机构/平台（中文，可自由扩展）
 DEFAULT_ACCOUNTS = [
-    {"id": "icbc", "name": "工商银行", "type": "bank", "group": "icbc"},
-    {"id": "abc", "name": "农业银行", "type": "bank", "group": "abc"},
-    {"id": "alipay", "name": "支付宝", "type": "payment", "group": "alipay"},
-    {"id": "wechat", "name": "微信零钱", "type": "payment", "group": "wechat"},
-    {"id": "alibao", "name": "余额宝", "type": "money_market", "group": "alipay"},
-    {"id": "alifund_018610", "name": "支付宝基金-018610", "type": "fund", "group": "alipay"},
-    {"id": "alifund_004388", "name": "支付宝基金-004388", "type": "fund", "group": "alipay"},
-    {"id": "wechattice", "name": "微信零钱通", "type": "money_market", "group": "wechat"},
-    {"id": "wechatlicai_004388", "name": "微信理财-004388", "type": "fund", "group": "wechat"},
+    {"id": "icbc", "name": "工商银行", "type": "bank", "org": "工商银行"},
+    {"id": "abc", "name": "农业银行", "type": "bank", "org": "农业银行"},
+    {"id": "whyz", "name": "芜湖扬子银行", "type": "bank", "org": "芜湖扬子银行"},
+    {"id": "alipay", "name": "支付宝", "type": "payment", "org": "支付宝"},
+    {"id": "wechat", "name": "微信零钱", "type": "payment", "org": "微信"},
+    {"id": "alibao", "name": "余额宝", "type": "money_market", "org": "支付宝"},
+    {"id": "alifund_018610", "name": "支付宝基金-018610", "type": "fund", "org": "支付宝"},
+    {"id": "alifund_004388", "name": "支付宝基金-004388", "type": "fund", "org": "支付宝"},
+    {"id": "wechattice", "name": "微信零钱通", "type": "money_market", "org": "微信"},
+    {"id": "wechatlicai_004388", "name": "微信理财-004388", "type": "fund", "org": "微信"},
 ]
 
 
@@ -37,6 +46,7 @@ def load_data():
         return data
     with open(DATA_FILE, encoding="utf-8") as f:
         return json.load(f)
+    return data
 
 
 def save_data(data):
@@ -99,34 +109,29 @@ def get_list_data(data, accounts, snapshots):
     return header, rows
 
 
-def get_type_summary(snapshots, accounts):
-    type_names = sorted(set(a["type"] for a in accounts))
+def get_summary(snapshots, accounts, label_of):
+    """按某维度汇总快照：label_of(账户) 返回该账户归属的维度列名（中文）。"""
+    labels = []
+    for acct in accounts:
+        lab = label_of(acct)
+        if lab not in labels:
+            labels.append(lab)
     rows = []
     for snap in snapshots:
-        row = [snap["date"], str(snap["total"])]
-        sums = {}
+        sums = {lab: 0 for lab in labels}
         for acct in accounts:
-            t = acct["type"]
-            sums[t] = sums.get(t, 0) + snap["balances"].get(acct["id"], 0)
-        for t in type_names:
-            row.append(str(sums[t]))
-        rows.append(row)
-    return ["日期", "总计"] + type_names, rows
+            lab = label_of(acct)
+            sums[lab] += snap["balances"].get(acct["id"], 0)
+        rows.append([snap["date"], str(snap["total"])] + [str(sums[lab]) for lab in labels])
+    return ["日期", "总计"] + labels, rows
 
 
-def get_group_summary(snapshots, accounts):
-    group_names = sorted(set(a["group"] for a in accounts))
-    rows = []
-    for snap in snapshots:
-        row = [snap["date"], str(snap["total"])]
-        sums = {}
-        for acct in accounts:
-            g = acct["group"]
-            sums[g] = sums.get(g, 0) + snap["balances"].get(acct["id"], 0)
-        for g in group_names:
-            row.append(str(sums[g]))
-        rows.append(row)
-    return ["日期", "总计"] + group_names, rows
+def by_type(acct):
+    return TYPE_LABELS.get(acct.get("type", ""), acct.get("type", "其他"))
+
+
+def by_org(acct):
+    return acct.get("org") or "未指定"
 
 
 def fmt_table(header, rows):
@@ -176,17 +181,21 @@ def cmd_add_account():
         return
 
     print("  类型:")
-    print("    bank, payment, money_market, fund")
+    print("    " + ", ".join(f"{t}({TYPE_LABELS.get(t, t)})" for t in TYPE_LABELS))
     type_ = input("  type [fund]: ").strip() or "fund"
+    if type_ not in TYPE_LABELS:
+        print(f"  类型无效，应为: {', '.join(TYPE_LABELS)}")
+        return
 
-    print("  分组:")
-    print("    abc, icbc, alipay, wechat")
-    group = input("  group [alipay]: ").strip()
-    if not group:
+    orgs = sorted({a.get("org", "") for a in data["accounts"] if a.get("org")})
+    if orgs:
+        print("  已有机构: " + ", ".join(orgs))
+    org = input("  机构 (中文, 如 徽商银行, 可输入新机构): ").strip()
+    if not org:
         print("已取消")
         return
 
-    data["accounts"].append({"id": aid, "name": name, "type": type_, "group": group})
+    data["accounts"].append({"id": aid, "name": name, "type": type_, "org": org})
     save_data(data)
     print(f"\n已添加账户: {name} ({aid})")
 
@@ -198,9 +207,10 @@ def main():
     sub.add_parser("record", help="记录资产快照")
 
     list_parser = sub.add_parser("list", help="查看资产总表")
-    list_parser.add_argument("--full", action="store_true", help="显示所有账户（含余额为 0 的）")
-    list_parser.add_argument("--by-type", action="store_true", help="按 type 汇总")
-    list_parser.add_argument("--by-group", action="store_true", help="按 group 汇总")
+    list_group = list_parser.add_mutually_exclusive_group()
+    list_group.add_argument("--full", action="store_true", help="显示所有账户（含余额为 0 的）")
+    list_group.add_argument("--by-type", action="store_true", help="按资产类别汇总")
+    list_group.add_argument("--by-org", action="store_true", help="按机构/平台汇总")
 
     sub.add_parser("add-account", help="添加新账户")
 
@@ -218,9 +228,9 @@ def main():
             return
 
         if args.by_type:
-            header, rows = get_type_summary(snapshots, data["accounts"])
-        elif args.by_group:
-            header, rows = get_group_summary(snapshots, data["accounts"])
+            header, rows = get_summary(snapshots, data["accounts"], by_type)
+        elif args.by_org:
+            header, rows = get_summary(snapshots, data["accounts"], by_org)
         else:
             if not args.full:
                 accounts = get_active_accounts(accounts, snapshots)
